@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '24'
+          node-version: '22'
 
       - name: Set up Java 21
         uses: actions/setup-java@v5
@@ -24,15 +24,13 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Prepare Web Assets and Capacitor
         run: |
           mkdir -p www
           cp index.html manifest.json sw.js icon.png www/ 2>/dev/null || true
+          rm -f package.json package-lock.json
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
           npx cap init "FD Wealth Calculator" "com.fdwealth.calculator" --web-dir=www
           npx cap add android
           npx cap sync android
