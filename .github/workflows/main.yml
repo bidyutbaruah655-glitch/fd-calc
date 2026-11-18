@@ -24,27 +24,38 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Prepare Web Assets and Capacitor
+      - name: Prepare Web Assets, Custom Icon & Capacitor
         run: |
-          mkdir -p www
+          mkdir -p www assets
           cp index.html manifest.json sw.js icon.png www/ 2>/dev/null || true
+          if [ -f icon.png ]; then
+            cp icon.png assets/icon.png
+            cp icon.png assets/icon-only.png
+            cp icon.png assets/icon-foreground.png
+          fi
           rm -f package.json package-lock.json
           npm init -y
-          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6 @capacitor/assets
           npx cap init "FD Wealth Calculator" "com.fdwealth.calculator" --web-dir=www
           npx cap add android
+          if [ -f assets/icon.png ]; then
+            npx capacitor-assets generate --android --iconBackgroundColor '#0f172a' --splashBackgroundColor '#0f172a'
+          fi
           npx cap sync android
 
-      - name: Build Debug APK and Release AAB
+      - name: Generate Keystore & Build Signed APK + AAB
         run: |
+          keytool -genkey -v -keystore release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias fdwealth -storepass FDWealth2026! -keypass FDWealth2026! -dname "CN=FD Wealth Calculator, OU=Finance, O=FDWealth, L=Guwahati, S=Assam, C=IN"
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug bundleRelease
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore ../release-key.jks -storepass FDWealth2026! -keypass FDWealth2026! app/build/outputs/bundle/release/app-release.aab fdwealth
 
-      - name: Upload APK and AAB Artifacts
+      - name: Upload APK, Signed AAB & Keystore
         uses: actions/upload-artifact@v5
         with:
           name: android-app-builds
           path: |
-            android/app/build/outputs/apk/debug/app-debug.apk
-            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/bundle/release/*.aab
+            release-key.jks
